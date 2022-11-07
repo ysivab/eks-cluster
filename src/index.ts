@@ -6,7 +6,6 @@ import { aws_ec2 as ec2 } from 'aws-cdk-lib';
 
 export interface EksClusterStackProps {
   appName: string;
-  services: [any]
 }
 
 export class EksCluster extends Construct {
@@ -14,7 +13,6 @@ export class EksCluster extends Construct {
     super(scope, id);
 
     const appName = props.appName;
-    const services = props.services;
 
     const vpcId = ssm.StringParameter.fromStringParameterAttributes(this, 'vpcid', {
       parameterName: `/network/${appName}/vpc_id`
@@ -64,7 +62,7 @@ export class EksCluster extends Construct {
       ]
     });
 
-    const cluster = new eks.FargateCluster(this, 'cluster1', {
+    const cluster = new eks.FargateCluster(this, `${appName}-cluster`, {
       clusterName: `${appName}`,
       mastersRole: clusterAdmin,
       version: eks.KubernetesVersion.V1_21,
@@ -79,91 +77,12 @@ export class EksCluster extends Construct {
       ]
     });
 
-    const manifests = [];
+    const kubectlRole = cluster.kubectlRole ? cluster.kubectlRole.roleArn : '';
 
-    const ingressRules = services.map(e => {
-      return {
-        host: e.hostName,
-        http: {
-          paths: [
-            {
-              path: "/",
-              pathType: "Prefix",
-              backend: {
-                service: {
-                  name: `svc-${e.serviceName}`,
-                  port: {
-                    number: 80
-                  }
-                }
-              }
-            }
-          ]
-        }
-      }
-    });
-
-    manifests.push({
-      apiVersion: "networking.k8s.io/v1",
-      kind: "Ingress",
-      metadata: {
-        name: `${appName}`,
-        annotations: {
-          "alb.ingress.kubernetes.io/scheme": "internet-facing",
-          "alb.ingress.kubernetes.io/target-type": "ip"
-        }
-      },
-      spec: {
-        ingressClassName: "alb",
-        rules: ingressRules
-      }
-    });
-
-
-    // deployment
-    services.map(e => {
-      manifests.push({
-        apiVersion: "apps/v1",
-        kind: "Deployment",
-        metadata: { name: e.serviceName },
-        spec: {
-          replicas: e.desiredCount,
-          selector: { matchLabels: { app: e.serviceName } },
-          template: {
-            metadata: { labels: { app: e.serviceName } },
-            spec: {
-              containers: [
-                {
-                  name: e.containerName,
-                  image: e.imageUri,
-                  ports: [{ containerPort: e.containerPort }]
-                }
-              ]
-            }
-          }
-        }
-      })
-    });
-
-
-    // services
-    services.map(e => {
-      manifests.push({
-        apiVersion: "v1",
-        kind: "Service",
-        metadata: { name: `${e.serviceName}` },
-        spec: {
-          type: "NodePort",
-          ports: [{ port: 80, targetPort: `${e.containerPort}`, protocol: "TCP" }],
-          selector: { app: e.serviceName }
-        }
-      })
-    })
-
-    // apply manifest to k8s
-    new eks.KubernetesManifest(this, 'hello-world-svc', {
-      cluster,
-      manifest: manifests
+    new ssm.StringParameter(this, 'PRIVATE_SUBNETS', {
+      description: `EKS Cluster Kubectl ARN`,
+      parameterName: `/eks/${appName}/KubectlRoleArn`,
+      stringValue: kubectlRole
     });
   }
 }
