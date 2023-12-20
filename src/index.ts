@@ -15,31 +15,31 @@ export class EksCluster extends Construct {
     const appName = props.appName;
 
     const vpcId = ssm.StringParameter.fromStringParameterAttributes(this, 'vpcid', {
-      parameterName: `/network/${appName}/vpc_id`
+      parameterName: `/network/vpc_id`
     }).stringValue;
 
     const az1 = ssm.StringParameter.fromStringParameterAttributes(this, 'az1', {
-      parameterName: `/network/${appName}/az1`
+      parameterName: `/network/az1`
     }).stringValue;
 
     const az2 = ssm.StringParameter.fromStringParameterAttributes(this, 'az2', {
-      parameterName: `/network/${appName}/az2`
+      parameterName: `/network/az2`
     }).stringValue;
 
     const pubsub1 = ssm.StringParameter.fromStringParameterAttributes(this, 'pubsub1', {
-      parameterName: `/network/${appName}/pubsub1`
+      parameterName: `/network/publicsubnets1`
     }).stringValue;
 
     const pubsub2 = ssm.StringParameter.fromStringParameterAttributes(this, 'pubsub2', {
-      parameterName: `/network/${appName}/pubsub2`
+      parameterName: `/network/publicsubnets2`
     }).stringValue;
 
     const prisub1 = ssm.StringParameter.fromStringParameterAttributes(this, 'prisub1', {
-      parameterName: `/network/${appName}/prisub1`
+      parameterName: `/network/privatesubnets1`
     }).stringValue;
 
     const prisub2 = ssm.StringParameter.fromStringParameterAttributes(this, 'prisub2', {
-      parameterName: `/network/${appName}/prisub2`
+      parameterName: `/network/privatesubnets2`
     }).stringValue;
 
     const clusterAdmin = new iam.Role(this, 'AdminRole', {
